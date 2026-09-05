@@ -2,20 +2,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Alert, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 
+import { AuthHeader } from '@/components/AuthHeader';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { GoogleButton } from '@/components/GoogleButton';
 import { OrDivider } from '@/components/OrDivider';
-import { createLocalUser, isSupabaseConfigured, signInWithGoogle, supabase } from '@/lib/supabase';
+import { signInWithGoogle, supabase } from '@/lib/supabase';
 import { loginSchema, type LoginFormData } from '@/lib/validation';
-import { useAuthStore } from '@/store/useAuthStore';
 
 export default function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const setUser = useAuthStore((state) => state.setUser);
   const { control, handleSubmit } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
@@ -23,13 +22,6 @@ export default function LoginScreen() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmitting(true);
-
-    if (!isSupabaseConfigured || !supabase) {
-      setUser(createLocalUser(data.email));
-      setIsSubmitting(false);
-      router.replace('/(tabs)');
-      return;
-    }
 
     const { error } = await supabase.auth.signInWithPassword({
       email: data.email,
@@ -59,36 +51,54 @@ export default function LoginScreen() {
   };
 
   return (
-    <View className="flex-1 justify-center bg-white px-6">
-      <Text className="mb-8 text-3xl font-bold text-gray-900">Welcome back</Text>
+    <KeyboardAvoidingView
+      className="flex-1 bg-white"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+      >
+        <AuthHeader
+          title="Welcome back"
+          subtitle="Sign in to keep every expiry date on your radar."
+        />
 
-      <FormField
-        control={control}
-        name="email"
-        label="Email"
-        placeholder="you@example.com"
-        keyboardType="email-address"
-      />
-      <FormField
-        control={control}
-        name="password"
-        label="Password"
-        placeholder="••••••••"
-        secureTextEntry
-      />
+        <View className="flex-1 px-6 pt-8">
+          <FormField
+            control={control}
+            name="email"
+            label="Email"
+            icon="mail-outline"
+            placeholder="you@example.com"
+            keyboardType="email-address"
+          />
+          <FormField
+            control={control}
+            name="password"
+            label="Password"
+            icon="lock-closed-outline"
+            placeholder="••••••••"
+            secureTextEntry
+          />
 
-      <Button title="Log in" isLoading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+          <View className="mt-2">
+            <Button title="Log in" isLoading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+          </View>
 
-      <OrDivider />
+          <OrDivider />
 
-      <GoogleButton isLoading={isGoogleLoading} onPress={onGooglePress} />
+          <GoogleButton isLoading={isGoogleLoading} onPress={onGooglePress} />
 
-      <View className="mt-6 flex-row justify-center">
-        <Text className="text-gray-500">Don&apos;t have an account? </Text>
-        <Link href="/(auth)/signup" className="font-semibold text-blue-600">
-          Sign up
-        </Link>
-      </View>
-    </View>
+          <View className="mb-8 mt-6 flex-row justify-center">
+            <Text className="font-sans-medium text-ink-500">Don&apos;t have an account? </Text>
+            <Link href="/(auth)/signup" className="font-sans-bold text-brand-600">
+              Sign up
+            </Link>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

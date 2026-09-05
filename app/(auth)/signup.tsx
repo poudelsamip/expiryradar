@@ -2,20 +2,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Alert, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 
+import { AuthHeader } from '@/components/AuthHeader';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { GoogleButton } from '@/components/GoogleButton';
 import { OrDivider } from '@/components/OrDivider';
-import { createLocalUser, isSupabaseConfigured, signInWithGoogle, supabase } from '@/lib/supabase';
+import { signInWithGoogle, supabase } from '@/lib/supabase';
 import { signupSchema, type SignupFormData } from '@/lib/validation';
-import { useAuthStore } from '@/store/useAuthStore';
 
 export default function SignupScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const setUser = useAuthStore((state) => state.setUser);
   const { control, handleSubmit } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
     defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
@@ -24,14 +23,7 @@ export default function SignupScreen() {
   const onSubmit = async (data: SignupFormData) => {
     setIsSubmitting(true);
 
-    if (!isSupabaseConfigured || !supabase) {
-      setUser(createLocalUser(data.email, data.name));
-      setIsSubmitting(false);
-      router.replace('/(tabs)');
-      return;
-    }
-
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: { data: { full_name: data.name } },
@@ -43,8 +35,9 @@ export default function SignupScreen() {
       return;
     }
 
-    Alert.alert('Check your inbox', 'Confirm your email to finish creating your account.');
-    router.replace('/(auth)/login');
+    // Supabase returns a session immediately when "Confirm email" is off for
+    // the project, so skip straight into the app instead of gating on it.
+    router.replace(signUpData.session ? '/(tabs)' : '/(auth)/login');
   };
 
   const onGooglePress = async () => {
@@ -61,50 +54,70 @@ export default function SignupScreen() {
   };
 
   return (
-    <View className="flex-1 justify-center bg-white px-6">
-      <Text className="mb-8 text-3xl font-bold text-gray-900">Create an account</Text>
+    <KeyboardAvoidingView
+      className="flex-1 bg-white"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+      >
+        <AuthHeader
+          title="Create account"
+          subtitle="Track food, documents, warranties and subscriptions."
+        />
 
-      <FormField
-        control={control}
-        name="name"
-        label="Name"
-        placeholder="Jane Doe"
-        autoCapitalize="words"
-      />
-      <FormField
-        control={control}
-        name="email"
-        label="Email"
-        placeholder="you@example.com"
-        keyboardType="email-address"
-      />
-      <FormField
-        control={control}
-        name="password"
-        label="Password"
-        placeholder="••••••••"
-        secureTextEntry
-      />
-      <FormField
-        control={control}
-        name="confirmPassword"
-        label="Confirm password"
-        placeholder="••••••••"
-        secureTextEntry
-      />
+        <View className="flex-1 px-6 pt-8">
+          <FormField
+            control={control}
+            name="name"
+            label="Name"
+            icon="person-outline"
+            placeholder="Jane Doe"
+            autoCapitalize="words"
+          />
+          <FormField
+            control={control}
+            name="email"
+            label="Email"
+            icon="mail-outline"
+            placeholder="you@example.com"
+            keyboardType="email-address"
+          />
+          <FormField
+            control={control}
+            name="password"
+            label="Password"
+            icon="lock-closed-outline"
+            placeholder="••••••••"
+            secureTextEntry
+          />
+          <FormField
+            control={control}
+            name="confirmPassword"
+            label="Confirm password"
+            icon="lock-closed-outline"
+            placeholder="••••••••"
+            secureTextEntry
+          />
 
-      <Button title="Sign up" isLoading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+          <View className="mt-2">
+            <Button title="Sign up" isLoading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+          </View>
 
-      <OrDivider />
+          <OrDivider />
 
-      <GoogleButton isLoading={isGoogleLoading} onPress={onGooglePress} />
+          <GoogleButton isLoading={isGoogleLoading} onPress={onGooglePress} />
 
-      <View className="mt-6 flex-row justify-center">
-        <Text className="text-gray-500">Already have an account? </Text>
-        <Link href="/(auth)/login" className="font-semibold text-blue-600">
-          Log in
-        </Link>
-      </View>
-    </View>
+          <View className="mb-8 mt-6 flex-row justify-center">
+            <Text className="font-sans-medium text-ink-500">Already have an account? </Text>
+            <Link href="/(auth)/login" className="font-sans-bold text-brand-600">
+              Log in
+            </Link>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

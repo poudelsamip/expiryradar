@@ -21,7 +21,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setSession: (session) => set({ session, user: session?.user ?? null }),
   setIsLoading: (isLoading) => set({ isLoading }),
   signOut: async () => {
-    await supabase?.auth.signOut();
+    await supabase.auth.signOut();
     set({ user: null, session: null });
   },
 }));
