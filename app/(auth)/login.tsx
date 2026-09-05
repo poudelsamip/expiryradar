@@ -6,12 +6,15 @@ import { Alert, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
-import { createLocalUser, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { GoogleButton } from '@/components/GoogleButton';
+import { OrDivider } from '@/components/OrDivider';
+import { createLocalUser, isSupabaseConfigured, signInWithGoogle, supabase } from '@/lib/supabase';
 import { loginSchema, type LoginFormData } from '@/lib/validation';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export default function LoginScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const setUser = useAuthStore((state) => state.setUser);
   const { control, handleSubmit } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -42,6 +45,19 @@ export default function LoginScreen() {
     router.replace('/(tabs)');
   };
 
+  const onGooglePress = async () => {
+    setIsGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    setIsGoogleLoading(false);
+
+    if (error) {
+      Alert.alert('Google sign-in failed', error.message);
+      return;
+    }
+
+    router.replace('/(tabs)');
+  };
+
   return (
     <View className="flex-1 justify-center bg-white px-6">
       <Text className="mb-8 text-3xl font-bold text-gray-900">Welcome back</Text>
@@ -62,6 +78,10 @@ export default function LoginScreen() {
       />
 
       <Button title="Log in" isLoading={isSubmitting} onPress={handleSubmit(onSubmit)} />
+
+      <OrDivider />
+
+      <GoogleButton isLoading={isGoogleLoading} onPress={onGooglePress} />
 
       <View className="mt-6 flex-row justify-center">
         <Text className="text-gray-500">Don&apos;t have an account? </Text>
